@@ -1,4 +1,4 @@
-name: Deploy Photo Processing Pipeline
+name: Validate and Plan Photo Processing Pipeline
 
 on:
   pull_request:
@@ -9,16 +9,17 @@ on:
       - main
 
 env:
+  AWS_REGION: eu-west-1
   TF_WORKING_DIR: infrastructure/terraform
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   terraform-checks:
-    name: Package, Format and Validate
+    name: Package, Format, Validate and Plan
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: .
 
     steps:
       - name: Checkout repository
@@ -36,9 +37,15 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init (no backend)
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::581816733311:role/event-driven-photo-pipeline-github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform init -backend=false
+        run: terraform init
 
       - name: Terraform Format Check
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -47,6 +54,10 @@ jobs:
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -no-color
 
       - name: Upload Lambda package
         uses: actions/upload-artifact@v4
