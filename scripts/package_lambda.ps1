@@ -67,7 +67,19 @@ print(f"Zip size: {zip_path.stat().st_size} bytes")
 $pythonScript = $pythonScript.Replace("SOURCE_DIR_PLACEHOLDER", $sourceDir)
 $pythonScript = $pythonScript.Replace("ZIP_PATH_PLACEHOLDER", $zipPath)
 
-$tempPy = Join-Path $env:TEMP "build_lambda_zip.py"
+$tempRoot = $env:RUNNER_TEMP
+if (-not $tempRoot) {
+    $tempRoot = $env:TEMP
+}
+if (-not $tempRoot) {
+    $tempRoot = [System.IO.Path]::GetTempPath()
+}
+if (-not $tempRoot) {
+    throw "Could not determine a temporary directory."
+}
+
+$tempPy = Join-Path $tempRoot "build_lambda_zip.py"
+
 Set-Content -Path $tempPy -Value $pythonScript -Encoding UTF8
 
 python $tempPy
